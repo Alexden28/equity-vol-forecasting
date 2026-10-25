@@ -10,7 +10,7 @@ import pandas as pd
 
 from . import models
 from .data import INDICES, ROOT, load
-from .evaluate import Z99, diebold_mariano, kupiec, mincer_zarnowitz, mse, perf, qlike, vol_target
+from .evaluate import Z99, diebold_mariano, fhs_var, kupiec, mincer_zarnowitz, mse, perf, qlike, vol_target
 from .plots import plot_all
 
 BENCH = "GARCH(1,1)"
@@ -43,6 +43,9 @@ def evaluate(df: pd.DataFrame, F: pd.DataFrame) -> dict:
     yy = y[ok]
     base_q = qlike(yy, F[BENCH].to_numpy()[ok])
     base_m = mse(yy, F[BENCH].to_numpy()[ok])
+    # filtered historical simulation needs ~250 days of standardised returns first: common subsample
+    fhs = pd.DataFrame({name: fhs_var(df["r"].where(ok), F[name].where(ok)) for name in F})
+    fhs_ok = fhs.notna().all(axis=1).to_numpy()
     stat_rows = {}
     for name in F:
         h = F[name].to_numpy()[ok]
@@ -50,7 +53,9 @@ def evaluate(df: pd.DataFrame, F: pd.DataFrame) -> dict:
         dm, p = diebold_mariano(q, base_q) if name != BENCH else (0.0, 1.0)
         exceed = df["r"].to_numpy()[ok] < Z99 * np.sqrt(h)
         rate, kp = kupiec(exceed)
+        rate_fhs, kp_fhs = kupiec(df["r"].to_numpy()[fhs_ok] < fhs[name].to_numpy()[fhs_ok])
         stat_rows[name] = {
+            "var99_fhs_rate": rate_fhs, "kupiec_fhs_p": kp_fhs, "fhs_days": int(fhs_ok.sum()),
             "qlike": float(q.mean()),
             "qlike_vs_garch_pct": float((q.mean() - base_q.mean()) / abs(base_q.mean()) * 100),
             "dm_stat": dm, "dm_p": p,
@@ -73,12 +78,16 @@ def evaluate(df: pd.DataFrame, F: pd.DataFrame) -> dict:
 def write_markdown(index: str, res: dict, path) -> None:
     s, st = res["stats"], res["strategy"]
     lines = [f"Out-of-sample: {res['sample'][0]} to {res['sample'][1]} ({res['sample'][2]:,} trading days).", "",
-             "| Model | QLIKE vs GARCH | DM stat (p) | MSE vs GARCH | Mincer-Zarnowitz R² | 99% VaR breaches (Kupiec p) |",
-             "| --- | --- | --- | --- | --- | --- |"]
+             "| Model | QLIKE vs GARCH | DM stat (p) | MSE vs GARCH | Mincer-Zarnowitz R² | 99% VaR breaches, normal (Kupiec p) | 99% VaR breaches, FHS (Kupiec p) |",
+             "| --- | --- | --- | --- | --- | --- | --- |"]
     for name, r in sorted(s.items(), key=lambda kv: kv[1]["qlike"]):
         dm = "benchmark" if name == BENCH else f"{r['dm_stat']:.2f} ({r['dm_p']:.3f})"
         lines.append(f"| {name} | {r['qlike_vs_garch_pct']:+.2f}% | {dm} | {r['mse_vs_garch_pct']:+.1f}% | "
-                     f"{r['mz_r2']:.3f} | {r['var99_exceed_rate']:.2%} ({r['kupiec_p']:.3f}) |")
+                     f"{r['mz_r2']:.3f} | {r['var99_exceed_rate']:.2%} ({r['kupiec_p']:.3f}) | "
+                     f"{r['var99_fhs_rate']:.2%} ({r['kupiec_fhs_p']:.3f}) |")
+    fhs_days = next(iter(s.values()))["fhs_days"]
+    lines += ["", f"FHS = filtered historical simulation: the 1% quantile of the previous 500 standardised returns "
+                  f"instead of the normal one ({fhs_days:,} days, after a 250-day warm-up)."]
     lines += ["", "Volatility targeting at 15% a year (weight capped at 2x, 5 bp per unit traded):", "",
               "| Strategy | CAGR | Volatility | Sharpe | Max drawdown | Vol of rolling vol | Turnover/yr |",
               "| --- | --- | --- | --- | --- | --- | --- |"]

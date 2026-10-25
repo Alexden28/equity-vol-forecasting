@@ -81,3 +81,19 @@ def test_vol_target_caps_leverage():
     h = pd.Series([1e-6, 1.0, 4.0])
     w = vol_target(r, h, target=15, max_lev=2)["w"]
     assert w.iloc[0] == 2.0 and w.max() <= 2.0
+
+
+def test_fhs_var_fixes_fat_tails():
+    """With Student-t(4) shocks the normal 99% VaR is breached ~1.5% of the time; FHS gets close
+    to 1%. The residual ~0.2 pp comes from estimating a 1% quantile from 500 days (5 tail points)."""
+    from volfc.evaluate import Z99, fhs_var
+    rng = np.random.default_rng(4)
+    shocks = rng.standard_t(4, 20_000) / np.sqrt(2.0)  # unit variance
+    r = pd.Series(shocks)
+    h = pd.Series(np.ones(len(r)))
+    normal_rate = (r < Z99).mean()
+    var = fhs_var(r, h)
+    ok = var.notna()
+    fhs_rate = (r[ok] < var[ok]).mean()
+    assert normal_rate > 0.014
+    assert fhs_rate < normal_rate and abs(fhs_rate - 0.01) < 0.003

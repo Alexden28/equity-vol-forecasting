@@ -52,6 +52,18 @@ def kupiec(exceed: np.ndarray, p: float = 0.01) -> tuple[float, float]:
     return rate, float(stats.chi2.sf(lr, 1))
 
 
+def fhs_var(r: pd.Series, h: pd.Series, p: float = 0.01, window: int = 500, min_obs: int = 250) -> pd.Series:
+    """Filtered historical simulation VaR (Barone-Adesi et al., 1999).
+
+    Scales the forecast volatility by the empirical p-quantile of past standardised returns
+    r / sqrt(h) instead of a normal quantile, so fat tails are taken from the data. The quantile
+    used at day t comes from days before t only.
+    """
+    z = r / np.sqrt(h)
+    q = z.shift(1).rolling(window, min_periods=min_obs).quantile(p)
+    return q * np.sqrt(h)
+
+
 def vol_target(r: pd.Series, h: pd.Series, target: float = 15.0, max_lev: float = 2.0,
                cost_bp: float = 5.0) -> pd.DataFrame:
     """Daily volatility targeting: weight = target / forecast vol, capped, with trading costs.

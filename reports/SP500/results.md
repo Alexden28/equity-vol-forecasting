@@ -1,14 +1,16 @@
 Out-of-sample: 2020-11-02 to 2026-10-21 (1,499 trading days).
 
-| Model | QLIKE vs GARCH | DM stat (p) | MSE vs GARCH | Mincer-Zarnowitz R² | 99% VaR breaches (Kupiec p) |
-| --- | --- | --- | --- | --- | --- |
-| GJR-GARCH(1,1)-t | -5.52% | -4.11 (0.000) | -5.6% | 0.112 | 1.73% (0.010) |
-| HAR-X (VIX) | -4.95% | -2.05 (0.041) | -12.8% | 0.174 | 1.87% (0.003) |
-| LSTM (QLIKE loss) | -1.32% | -0.53 (0.595) | -9.2% | 0.140 | 1.67% (0.018) |
-| GARCH(1,1) | +0.00% | benchmark | +0.0% | 0.064 | 1.80% (0.005) |
-| EWMA (RiskMetrics) | +2.88% | 1.82 (0.069) | -0.8% | 0.062 | 1.87% (0.003) |
-| HAR | +3.21% | 2.45 (0.014) | -0.6% | 0.065 | 1.40% (0.141) |
-| VIX, rescaled | +16.53% | 4.64 (0.000) | +5.9% | 0.088 | 0.60% (0.093) |
+| Model | QLIKE vs GARCH | DM stat (p) | MSE vs GARCH | Mincer-Zarnowitz R² | 99% VaR breaches, normal (Kupiec p) | 99% VaR breaches, FHS (Kupiec p) |
+| --- | --- | --- | --- | --- | --- | --- |
+| GJR-GARCH(1,1)-t | -5.52% | -4.11 (0.000) | -5.6% | 0.112 | 1.73% (0.010) | 1.28% (0.339) |
+| HAR-X (VIX) | -4.95% | -2.05 (0.041) | -12.8% | 0.174 | 1.87% (0.003) | 1.60% (0.050) |
+| LSTM (QLIKE loss) | -1.32% | -0.53 (0.595) | -9.2% | 0.140 | 1.67% (0.018) | 1.60% (0.050) |
+| GARCH(1,1) | +0.00% | benchmark | +0.0% | 0.064 | 1.80% (0.005) | 1.44% (0.142) |
+| EWMA (RiskMetrics) | +2.88% | 1.82 (0.069) | -0.8% | 0.062 | 1.87% (0.003) | 1.20% (0.489) |
+| HAR | +3.21% | 2.45 (0.014) | -0.6% | 0.065 | 1.40% (0.141) | 1.52% (0.086) |
+| VIX, rescaled | +16.53% | 4.64 (0.000) | +5.9% | 0.088 | 0.60% (0.093) | 1.84% (0.007) |
+
+FHS = filtered historical simulation: the 1% quantile of the previous 500 standardised returns instead of the normal one (1,249 days, after a 250-day warm-up).
 
 Volatility targeting at 15% a year (weight capped at 2x, 5 bp per unit traded):
 

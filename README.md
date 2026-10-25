@@ -16,9 +16,13 @@ no forecast uses information after the close of the previous day, and a test che
 2. **The LSTM does not beat GARCH(1,1).** Trained with the same QLIKE loss, retrained every year
    on all past data and averaged over three seeds, it lands at +0.15% on the NASDAQ (p = 0.86) and
    −1.3% on the S&P 500 (p = 0.60): not significantly different from a three-parameter model.
-3. **On the NASDAQ every model's 99% VaR is breached on 1.5–2.5% of days instead of 1%**, and the
-   Kupiec test rejects all of them. The variance forecasts are fine; the normal quantile is not
-   (fat tails). A Student-t or filtered historical-simulation quantile is the fix.
+3. **The normal quantile, not the variance forecast, breaks the 99% VaR.** On the NASDAQ every
+   model's normal VaR is breached on 1.5–2.5% of days instead of 1%, and the Kupiec test rejects
+   all of them. Taking the quantile from past standardised returns instead (filtered historical
+   simulation) brings breaches down to 1.1–1.3%, and the test no longer rejects five of the seven
+   models. The excess left, about 0.2 points, is the bias of estimating a 1% quantile from 500
+   days; a simulation in the tests reproduces it. On the S&P 500's shorter sample the picture is
+   mixed (1.2–1.8%).
 4. **Volatility targeting buys risk control, not return.** Targeting 15% a year lifts the NASDAQ
    Sharpe ratio from 0.51 to 0.62 and cuts the maximum drawdown from −78% to −48%, but compound
    growth falls from 10.3% to 8.6% a year. On the S&P 500 since 2020 it lowered the Sharpe ratio
@@ -26,13 +30,13 @@ no forecast uses information after the close of the previous day, and a test che
 5. **Better statistical forecasts did not make a better strategy.** HAR-X is the most accurate
    model but trades 50% more than GARCH (15.5x vs 10.3x a year) and ends with a lower Sharpe ratio.
 
-| NASDAQ, 1998–2026 | QLIKE vs GARCH | DM p | 99% VaR breaches | Vol-target Sharpe | Max drawdown |
+| NASDAQ, 1998–2026 | QLIKE vs GARCH | DM p | 99% VaR breaches, normal / FHS | Vol-target Sharpe | Max drawdown |
 | --- | --- | --- | --- | --- | --- |
-| HAR-X (VIX) | −1.98% | <0.001 | 1.71% | 0.58 | −50.7% |
-| GJR-GARCH(1,1)-t | −1.34% | 0.037 | 1.79% | 0.60 | −48.2% |
-| GARCH(1,1) | benchmark | | 1.81% | 0.62 | −48.2% |
-| LSTM (QLIKE loss) | +0.15% | 0.855 | 2.48% | 0.55 | −59.5% |
-| EWMA (RiskMetrics) | +1.25% | 0.011 | 1.93% | 0.62 | −46.5% |
+| HAR-X (VIX) | −1.98% | <0.001 | 1.71% / 1.19% | 0.58 | −50.7% |
+| GJR-GARCH(1,1)-t | −1.34% | 0.037 | 1.79% / 1.27% | 0.60 | −48.2% |
+| GARCH(1,1) | benchmark | | 1.81% / 1.19% | 0.62 | −48.2% |
+| LSTM (QLIKE loss) | +0.15% | 0.855 | 2.48% / 1.11% | 0.55 | −59.5% |
+| EWMA (RiskMetrics) | +1.25% | 0.011 | 1.93% / 1.24% | 0.62 | −46.5% |
 | Buy and hold | | | | 0.51 | −77.9% |
 
 Full tables: [NASDAQ](reports/NASDAQCOM/results.md) · [S&P 500](reports/SP500/results.md).
@@ -61,7 +65,8 @@ run and not committed, because FRED redistributes them under their owners' terms
 **Evaluation.** The squared daily return is a noisy proxy for the true variance, so models are
 ranked by QLIKE, which keeps the ranking consistent under proxy noise (Patton, 2011), and compared
 to GARCH(1,1) with Diebold-Mariano tests using Newey-West standard errors. Also reported: MSE,
-Mincer-Zarnowitz R², 99% one-day VaR breaches with the Kupiec test, and a volatility-targeting
+Mincer-Zarnowitz R², 99% one-day VaR breaches with the Kupiec test (normal quantile, and filtered
+historical simulation over the previous 500 standardised returns), and a volatility-targeting
 strategy (weight = 15% / forecast vol, capped at 2x, 5 bp cost per unit of weight traded).
 
 ## Run it
@@ -88,5 +93,6 @@ variance, no look-ahead for EWMA, GARCH and HAR, and the evaluation statistics.
 
 Corsi (2009), *A Simple Approximate Long-Memory Model of Realized Volatility*. Patton (2011),
 *Volatility forecast comparison using imperfect volatility proxies*. Diebold & Mariano (1995).
-Kupiec (1995). Moreira & Muir (2017), *Volatility-Managed Portfolios*. Glosten, Jagannathan &
+Kupiec (1995). Barone-Adesi, Giannopoulos & Vosper (1999), *VaR without correlations for
+portfolios of derivative securities*. Moreira & Muir (2017), *Volatility-Managed Portfolios*. Glosten, Jagannathan &
 Runkle (1993).
