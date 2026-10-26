@@ -69,6 +69,32 @@ Mincer-Zarnowitz R², 99% one-day VaR breaches with the Kupiec test (normal quan
 historical simulation over the previous 500 standardised returns), and a volatility-targeting
 strategy (weight = 15% / forecast vol, capped at 2x, 5 bp cost per unit of weight traded).
 
+## Architecture
+
+```mermaid
+flowchart LR
+    FRED["FRED: NASDAQ, S&P 500,<br/>VIX daily closes"] --> r["daily log returns"]
+    r --> loop["walk-forward loop: day t<br/>forecast from data to t-1"]
+    loop --> models
+    subgraph models ["models"]
+        direction TB
+        a["EWMA, GARCH(1,1),<br/>GJR-GARCH-t"]
+        b["log-HAR, HAR-X (VIX),<br/>VIX rescaled"]
+        c["LSTM, Gaussian NLL<br/>(= QLIKE)"]
+    end
+    models --> fc["forecasts.csv"]
+    fc --> e1["QLIKE, Diebold-Mariano,<br/>Mincer-Zarnowitz"]
+    fc --> e2["99% VaR, normal and FHS,<br/>Kupiec test"]
+    fc --> e3["volatility targeting,<br/>5 bp costs"]
+```
+
+## Performance
+
+One full run, `python -m volfc run --index NASDAQCOM`, on a laptop (AMD Ryzen 9 8940HX, RTX 5070 Laptop GPU for
+the LSTM): about 7,000 daily out-of-sample forecasts from each of seven models, 1998–2026, with GARCH refitted
+every 21 days and the LSTM retrained every January with three seeds. It takes **2.5 minutes, with 1.6 GB peak
+memory**. `--no-lstm` runs on any CPU.
+
 ## Run it
 
 ```bash
@@ -77,6 +103,13 @@ python -m volfc run --index NASDAQCOM                                   # about 
 python -m volfc run --index SP500 --start 2016-10-01 --oos-start 2020-11-01 --window 1000
 python -m volfc report --index NASDAQCOM     # rebuild tables and figures from reports/*/forecasts.csv
 pytest -q
+```
+
+Or in Docker (CI builds the image and runs the tests inside it on every push):
+
+```bash
+docker build -t volfc .
+docker run --rm -v "$PWD/reports:/app/reports" volfc run --index NASDAQCOM   # CPU; add --no-lstm to skip the LSTM
 ```
 
 Tests run on simulated GARCH data: parameter recovery, forecasts tracking the true conditional
