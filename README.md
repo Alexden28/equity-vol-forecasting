@@ -91,7 +91,7 @@ flowchart LR
 ## Performance
 
 One full run, `python -m volfc run --index NASDAQCOM`, on a laptop (AMD Ryzen 9 8940HX, RTX 5070 Laptop GPU for
-the LSTM): about 7,000 daily out-of-sample forecasts from each of seven models, 1998–2026, with GARCH refitted
+the LSTM): 7,246 daily out-of-sample forecasts from each of seven models, 1998–2026, with GARCH refitted
 every 21 days and the LSTM retrained every January with three seeds. It takes **2.5 minutes, with 1.6 GB peak
 memory**. `--no-lstm` runs on any CPU.
 
